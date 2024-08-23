@@ -1,0 +1,13 @@
+[package]
+name = "tonic-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+prost = "0.13.1"
+tonic = { version = "0.12.1", features = [] }
+tokio = { version = "1.35.1", features = ["macros", "rt-multi-thread", "signal"] }
+tonic-build = "0.12.1"
+
+[build-dependencies]
+tonic-build = "0.12.1"

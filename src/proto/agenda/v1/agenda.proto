@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package agenda.v1;
+
+
+service AgendaService {
+  rpc Ping (PingRequest) returns (PingResponse);
+  rpc CreateAgenda (CreateAgendaRequest) returns (CreateAgendaResponse);
+  rpc GetAgenda (GetAgendaRequest) returns (GetAgendaResponse);
+  rpc GetAgendas (GetAgendasRequest) returns (GetAgendasResponse);
+  rpc UpdateAgenda (UpdateAgendaRequest) returns (UpdateAgendaResponse);
+  rpc DeleteAgenda (DeleteAgendaRequest) returns (DeleteAgendaResponse);
+}
+
+
+message Agenda {
+  int64 id = 1;
+  string name = 2;
+  string email = 3;
+  string phone = 4;
+}
+
+message PingRequest {}
+
+message PingResponse {
+  string response = 1;
+}
+
+message CreateAgendaRequest {
+  Agenda agenda = 1;
+}
+
+message CreateAgendaResponse {
+  Agenda agenda = 1;
+}
+
+message GetAgendaRequest {
+  int64 id = 1;
+}
+
+message GetAgendaResponse {
+  Agenda agenda = 1;
+}
+
+message GetAgendasRequest {
+  int64 page = 1;
+  int64 items = 2;
+}
+
+message GetAgendasResponse {
+  repeated Agenda agendas = 1;
+  int64 total = 2;
+  int64 next_page = 3;
+}
+
+message UpdateAgendaRequest {
+  int64 id = 1;
+  Agenda agenda = 2;
+}
+
+message UpdateAgendaResponse {
+  Agenda agenda = 1;
+}
+
+message DeleteAgendaRequest {
+  int64 id = 1;
+}
+
+message DeleteAgendaResponse {}
