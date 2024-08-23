@@ -3,6 +3,8 @@ use tokio::{time::Duration, time};
 use crate::agenda::agenda_service_server::AgendaServiceServer;
 
 mod service;
+mod model;
+mod database;
 
 pub mod agenda {
     tonic::include_proto!("agenda.v1");
