@@ -4,7 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+openssl = { version = "0.10.40", features = ["vendored"] }
 prost = "0.13.1"
+sqlx = { version = "0.8.0", features = ["postgres", "runtime-tokio-native-tls"] }
+sqlx-postgres = "0.8.0"
 tonic = { version = "0.12.1", features = [] }
 tokio = { version = "1.35.1", features = ["macros", "rt-multi-thread", "signal"] }
 tonic-build = "0.12.1"

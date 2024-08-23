@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: postgres:16.3-alpine3.20
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    restart: always
+    ports:
+      - "5432:5432"
+
+  tonic-server:
+    build:
+        context: .
+    ports:
+        - "50051:50051/tcp"
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_TYPE: postgres
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/postgres"
+
+volumes:
+  postgres_data:
+
