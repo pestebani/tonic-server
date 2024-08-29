@@ -10,7 +10,19 @@ services:
     restart: always
     ports:
       - "5432:5432"
-
+  otel-collector:
+    image: jaegertracing/all-in-one:1.58.1
+    ports:
+      - "4317:4317"
+      - "16686:16686"
+  loki:
+    image: grafana/loki:latest
+    ports:
+      - "3100:3100"
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
   tonic-server:
     build:
         context: .
@@ -18,9 +30,16 @@ services:
         - "50051:50051/tcp"
     depends_on:
       - postgres
+      - otel-collector
+      - loki
     environment:
       DATABASE_TYPE: postgres
       DATABASE_URL: "postgres://postgres:postgres@postgres:5432/postgres"
+      RUST_LOG: info
+      OTEL_EXPORTER_LOGS: loki
+      OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: "http://loki:3100"
+      OTEL_EXPORTER_TRACES: otlp
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://otel-collector:4317"
 
 volumes:
   postgres_data:

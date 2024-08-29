@@ -4,9 +4,11 @@ use std::error::Error;
 use sqlx::{Pool, Row};
 use sqlx_postgres::{PgQueryResult, PgRow, Postgres};
 use tonic::async_trait;
+use tracing::instrument;
 use crate::database::Database;
 use crate::database::error::DatabaseError;
 use crate::model::AgendaModel;
+use crate::trace_and_handle_error_database;
 
 #[derive(Debug, Clone)]
 pub struct PostgresDB {
@@ -79,83 +81,97 @@ impl Database for PostgresDB {
             .await?;
         Ok(())
     }
+    #[instrument(level = "info")]
     async fn retrieve_from_id(self, id: i64) -> Result<AgendaModel, DatabaseError> {
-        let query = "SELECT id, name, phone, email FROM my_table WHERE id=$1";
-        let select_query = sqlx::query(query)
-            .bind(id);
-
-        let res_model = execute_query_return_agenda!(select_query, &self.pool);
-
-        convert_postgres_result_to_database_result(res_model, Some(id), None)
+        trace_and_handle_error_database!({
+            let query = "SELECT id, name, phone, email FROM my_table WHERE id=$1";
+            let select_query = sqlx::query(query)
+                .bind(id);
+    
+            let res_model = execute_query_return_agenda!(select_query, &self.pool);
+    
+            convert_postgres_result_to_database_result(res_model, Some(id), None)
+        })
     }
 
+    #[instrument(level = "info")]
     async fn retrieve_all(self, page: i64, items: i64) -> Result<(Vec<AgendaModel>, i64, i64), DatabaseError> {
-        let query = "SELECT id, name, phone, email, (SELECT COUNT(*) FROM my_table) AS total_count FROM my_table ORDER BY id LIMIT $1 OFFSET $2";
-        let select_query = sqlx::query(query)
-            .bind(items)
-            .bind((page - 1) * items);
-
-        let mut total_count: i64 = 0;
-
-        let return_function = |row: PgRow| {
-            total_count = row.get("total_count");
-            AgendaModel {
-                id: row.get("id"),
-                name: row.get("name"),
-                phone: row.get("phone"),
-                email: row.get("email")
-            }
-        };
-
-        let agenda_models = select_query.map(return_function)
-            .fetch_all(&self.pool)
-            .await?;
-
-        Ok(
-            (
-                agenda_models,
-                if (total_count as u64).div_ceil(items as u64) as i64 > page { page + 1 } else { 0 },
-                total_count,
+        trace_and_handle_error_database!({
+            let query = "SELECT id, name, phone, email, (SELECT COUNT(*) FROM my_table) AS total_count FROM my_table ORDER BY id LIMIT $1 OFFSET $2";
+            let select_query = sqlx::query(query)
+                .bind(items)
+                .bind((page - 1) * items);
+    
+            let mut total_count: i64 = 0;
+    
+            let return_function = |row: PgRow| {
+                total_count = row.get("total_count");
+                AgendaModel {
+                    id: row.get("id"),
+                    name: row.get("name"),
+                    phone: row.get("phone"),
+                    email: row.get("email")
+                }
+            };
+    
+            let agenda_models = select_query.map(return_function)
+                .fetch_all(&self.pool)
+                .await?;
+    
+            Ok(
+                (
+                    agenda_models,
+                    if (total_count as u64).div_ceil(items as u64) as i64 > page { page + 1 } else { 0 },
+                    total_count,
+                )
             )
-        )
+        })
     }
 
+    #[instrument(level = "info")]
     async fn create_agenda(self, agenda: AgendaModel) -> Result<AgendaModel, DatabaseError> {
-        let query = "INSERT INTO my_table (name, phone, email) VALUES ($1, $2, $3) RETURNING id, name, phone, email";
-        let insert_element_query = sqlx::query(query)
-            .bind(agenda.name.clone())
-            .bind(agenda.phone.clone())
-            .bind(agenda.email.clone());
-
-
-        let res_model = execute_query_return_agenda!(insert_element_query, &self.pool);
-        convert_postgres_result_to_database_result(res_model, None, Some(agenda))
+        trace_and_handle_error_database!({
+            let query = "INSERT INTO my_table (name, phone, email) VALUES ($1, $2, $3) RETURNING id, name, phone, email";
+            let insert_element_query = sqlx::query(query)
+                .bind(agenda.name.clone())
+                .bind(agenda.phone.clone())
+                .bind(agenda.email.clone());
+    
+            let res_model = execute_query_return_agenda!(insert_element_query, &self.pool);
+            convert_postgres_result_to_database_result(res_model, None, Some(agenda))
+        })
     }
 
+    #[instrument(level = "info")]
     async fn update_agenda(self, id: i64, agenda: AgendaModel) -> Result<AgendaModel, DatabaseError> {
-        let query = "UPDATE my_table SET name=$1, phone=$2, email=$3 WHERE id=$4 RETURNING id, name, phone, email";
-        let updated_elements_query = sqlx::query(query)
-            .bind(agenda.name.clone())
-            .bind(agenda.phone.clone())
-            .bind(agenda.email.clone())
-            .bind(id);
-
-        let res_model = execute_query_return_agenda!(updated_elements_query, &self.pool);
-
-        convert_postgres_result_to_database_result(res_model, Some(id), Some(agenda))
+        trace_and_handle_error_database!({
+            let query = "UPDATE my_table SET name=$1, phone=$2, email=$3 WHERE id=$4 RETURNING id, name, phone, email";
+            let updated_elements_query = sqlx::query(query)
+                .bind(agenda.name.clone())
+                .bind(agenda.phone.clone())
+                .bind(agenda.email.clone())
+                .bind(id);
+    
+            let res_model = execute_query_return_agenda!(updated_elements_query, &self.pool);
+    
+            convert_postgres_result_to_database_result(res_model, Some(id), Some(agenda))
+        })
     }
 
+    #[instrument(level = "info")]
     async fn delete_agenda(self, id: i64) -> Result<(), DatabaseError> {
-        let query = "DELETE from my_table WHERE id = $1";
-        let deleted_elements_query: PgQueryResult = sqlx::query(query)
-            .bind(id)
-            .execute(&self.pool)
-            .await?;
-
-        if deleted_elements_query.rows_affected() < 1 {
-            Err(DatabaseError::NotFoundError {id})
-        } else {
-            Ok(())
-        }
+        trace_and_handle_error_database!({
+            let query = "DELETE from my_table WHERE id = $1";
+            let deleted_elements_query: PgQueryResult = sqlx::query(query)
+                .bind(id)
+                .execute(&self.pool)
+                .await?;
+    
+            if deleted_elements_query.rows_affected() < 1 {
+                Err(DatabaseError::NotFoundError {id})
+            } else {
+                Ok(())
+            }
+        })
     }
 }
