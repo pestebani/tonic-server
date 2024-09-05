@@ -175,3 +175,312 @@ impl Database for PostgresDB {
         })
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::error::Error;
+
+    async fn empty_database() -> Result<PostgresDB, Box<dyn std::error::Error>> {
+        let db = PostgresDB::new().await?;
+        let query = "DELETE from my_table";
+        sqlx::query(query)
+            .execute(&db.pool)
+            .await?;
+        Ok(db)
+    }
+
+    #[tokio::test]
+    async fn test_convert_postgres_result_to_database_result_ok() {
+        let result = convert_postgres_result_to_database_result(Ok(1), None, None);
+        assert_eq!(result, Ok(1));
+    }
+
+    #[tokio::test]
+    async fn test_convert_postgres_result_to_database_result_row_not_found() {
+        let result = convert_postgres_result_to_database_result::<()>(Err(Error::RowNotFound), Some(1), None);
+        assert_eq!(result, Err(DatabaseError::NotFoundError {id: 1}));
+    }
+
+    #[tokio::test]
+    async fn test_convert_postgres_result_to_database_result_unknown_error() {
+        let result = convert_postgres_result_to_database_result::<()>(Err(Error::ColumnNotFound("Demo error".to_string())), None, None);
+        assert_eq!(result, Err(DatabaseError::UnknownError {error: "no column found for name: Demo error".to_string()}));
+    }
+
+    #[tokio::test]
+    async fn test_new_postgres_db_success() {
+        let result = PostgresDB::new().await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_new_postgres_db_error() {
+        let old_env_var = env::var("DATABASE_URL").unwrap_or("".to_string());
+        env::set_var("DATABASE_URL", "invalid_url");
+
+        let result = PostgresDB::new().await;
+
+        assert!(result.is_err());
+
+        env::set_var("DATABASE_URL", old_env_var);
+    }
+
+    #[tokio::test]
+    async fn test_init_database_success() {
+        let db = PostgresDB::new().await.unwrap();
+
+        let result = db.init_database().await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_insert_retrieve_from_id_success() {
+        let db = PostgresDB::new().await.unwrap();
+        db.clone().init_database().await.unwrap();
+
+        empty_database().await.unwrap();
+
+        let model = AgendaModel {
+            id: 0,
+            name: "test".to_string(),
+            phone: "123456789".to_string(),
+            email: "test_email@test.com".to_string()
+        };
+
+        let result_id = db.clone()
+            .create_agenda(model.clone()).await;
+
+        assert!(result_id.is_ok());
+        let model_created = result_id.unwrap();
+
+        assert!(model_created.id > 0);
+        assert_eq!(model_created.name, model.name);
+        assert_eq!(model_created.phone, model.phone);
+        assert_eq!(model_created.email, model.email);
+
+        let result = db.retrieve_from_id(model_created.id).await;
+
+        assert!(result.is_ok());
+
+        let model_retrieved = result.unwrap();
+
+        assert_eq!(model_retrieved, model_created);
+    }
+
+    #[tokio::test]
+    async fn test_insert_retrieve_all_success() {
+        let db = PostgresDB::new().await.unwrap();
+        db.clone().init_database().await.unwrap();
+        empty_database().await.unwrap();
+
+        let model1 = AgendaModel {
+            id: 0,
+            name: "test_1".to_string(),
+            phone: "123456789".to_string(),
+            email: "test_email_1@test.com".to_string(),
+        };
+
+        let model2 = AgendaModel {
+            id: 0,
+            name: "test_2".to_string(),
+            phone: "123456789".to_string(),
+            email: "test_email_2@test.com".to_string(),
+        };
+
+        let model3 = AgendaModel {
+            id: 0,
+            name: "test_3".to_string(),
+            phone: "123456789".to_string(),
+            email: "test_email_3@test.com".to_string(),
+        };
+
+        let result_id1 = db.clone()
+            .create_agenda(model1.clone()).await;
+
+        assert!(result_id1.is_ok());
+
+        let result_id2 = db.clone()
+            .create_agenda(model2.clone()).await;
+
+        assert!(result_id2.is_ok());
+
+        let result_id3 = db.clone()
+            .create_agenda(model3.clone()).await;
+
+        assert!(result_id3.is_ok());
+
+        let result = db.retrieve_all(1, 2).await;
+        assert!(result.is_ok());
+
+        let (models, next_page, total_count) = result.unwrap();
+        assert_eq!(models.len(), 2);
+        assert_eq!(next_page, 2);
+        assert_eq!(total_count, 3);
+    }
+
+    #[tokio::test]
+    async fn test_insert_update_success() {
+        let db = PostgresDB::new().await.unwrap();
+        db.clone().init_database().await.unwrap();
+        empty_database().await.unwrap();
+
+        let model = AgendaModel {
+            id: 0,
+            name: "test".to_string(),
+            phone: "123456789".to_string(),
+            email: "test_email@test.com".to_string(),
+        };
+
+        let result_id = db.clone()
+            .create_agenda(model.clone()).await;
+
+        assert!(result_id.is_ok());
+
+        let new_model = AgendaModel {
+            id: result_id.unwrap().id,
+            name: "new_test".to_string(),
+            phone: "987654321".to_string(),
+            email: "another_test_email@test.com".to_string(),
+        };
+
+        let res_update_model = db.clone()
+            .update_agenda(new_model.id, new_model.clone()).await;
+
+        assert!(res_update_model.is_ok());
+        let updated_model = res_update_model.unwrap();
+        assert_eq!(updated_model, new_model);
+
+    }
+
+    #[tokio::test]
+    async fn delete_agenda_success() {
+        let db = PostgresDB::new().await.unwrap();
+        db.clone().init_database().await.unwrap();
+        empty_database().await.unwrap();
+
+        let model = AgendaModel {
+            id: 0,
+            name: "test".to_string(),
+            phone: "123456789".to_string(),
+            email: "test_email@test.com".to_string(),
+        };
+
+        let result_id = db.clone()
+            .create_agenda(model.clone()).await;
+
+        assert!(result_id.is_ok());
+        let inserted_id = result_id.unwrap().id;
+
+        let result = db.clone()
+            .delete_agenda(inserted_id).await;
+
+        assert!(result.is_ok());
+
+        let result_retrieve = db.clone()
+            .retrieve_from_id(inserted_id).await;
+
+        assert!(result_retrieve.is_err());
+        let _ = result_retrieve.map_err(|e| {
+            assert_eq!(e, DatabaseError::NotFoundError {id: inserted_id});
+        });
+    }
+    
+    #[tokio::test]
+    async fn delete_agenda_not_found() {
+        let db = PostgresDB::new().await.unwrap();
+        db.clone().init_database().await.unwrap();
+        empty_database().await.unwrap();
+
+        let result = db.clone()
+            .delete_agenda(1).await;
+
+        assert!(result.is_err());
+        let _ = result.map_err(|e| {
+            assert_eq!(e, DatabaseError::NotFoundError {id: 1});
+        });
+    }
+    
+    #[tokio::test]
+    async fn test_insert_already_exists() {
+        let db = PostgresDB::new().await.unwrap();
+        db.clone().init_database().await.unwrap();
+        empty_database().await.unwrap();
+
+        let model1 = AgendaModel {
+            id: 0,
+            name: "test".to_string(),
+            phone: "123456789".to_string(),
+            email: "test_email_1@test.com".to_string(),
+        };
+
+        let model2 = AgendaModel {
+            id: 0,
+            name: "test".to_string(),
+            phone: "987654321".to_string(),
+            email: "test_email_2@test.com".to_string(),
+        };
+        
+        let result_id1 = db.clone()
+            .create_agenda(model1.clone()).await;
+        
+        assert!(result_id1.is_ok());
+        
+        let result_id2 = db.clone()
+            .create_agenda(model2.clone()).await;
+        
+        assert!(result_id2.is_err());
+        let _ = result_id2.map_err(|e| {
+            assert_eq!(e, DatabaseError::AlreadyExists {error: "It already exists an entry with name test".to_string()});
+        });
+    }
+    
+    #[tokio::test]
+    async fn test_update_already_exists() {
+        let db = PostgresDB::new().await.unwrap();
+        db.clone().init_database().await.unwrap();
+        empty_database().await.unwrap();
+
+        let model1 = AgendaModel {
+            id: 0,
+            name: "test_1".to_string(),
+            phone: "123456789".to_string(),
+            email: "test_email_1@test.com".to_string(),
+        };
+
+        let model2 = AgendaModel {
+            id: 0,
+            name: "test_2".to_string(),
+            phone: "987654321".to_string(),
+            email: "test_email_2@test.com".to_string(),
+        };
+
+        let result_id1 = db.clone()
+            .create_agenda(model1.clone()).await;
+
+        assert!(result_id1.is_ok());
+
+        let result_id2 = db.clone()
+            .create_agenda(model2.clone()).await;
+
+        assert!(result_id2.is_ok());
+
+        let model1_update = AgendaModel {
+            id: 0,
+            name: "test_2".to_string(),
+            phone: "123456789".to_string(),
+            email: "test_email_1@test.com".to_string(),
+        };
+        
+        let result_update = db.clone()
+            .update_agenda(result_id1.unwrap().id, model1_update.clone()).await;
+        
+        assert!(result_update.is_err());
+        let _ = result_update.map_err(|e| {
+            assert_eq!(e, DatabaseError::AlreadyExists {error: "It already exists an entry with name test_2".to_string()});
+        });
+    }
+}

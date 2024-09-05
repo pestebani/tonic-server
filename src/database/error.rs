@@ -3,7 +3,7 @@ use std::fmt;
 use tonic::{Status, Code};
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum DatabaseError {
     ConnectionError,
     NotFoundError{id: i64},
@@ -50,5 +50,72 @@ impl From<DatabaseError> for Status {
             DatabaseError::ConnectionError => Status::new(Code::Unavailable, err.to_string()),
             DatabaseError::UnimplementedError => Status::new(Code::Unimplemented, err.to_string()),
         }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_database_error_display() {
+        let error = DatabaseError::NotFoundError{id: 1};
+        assert_eq!(error.to_string(), "the element with id 1 does not exists");
+    }
+
+    #[tokio::test]
+    async fn test_database_error_from() {
+        let error = std::io::Error::new(std::io::ErrorKind::Other, "test");
+        let db_error = DatabaseError::from(error);
+        assert_eq!(db_error, DatabaseError::UnknownError{error: "test".to_string()});
+    }
+
+    #[tokio::test]
+    async fn test_database_error_into() {
+        let error = DatabaseError::NotFoundError{id: 1};
+        let status = Status::from(error);
+        assert_eq!(status.code(), Code::NotFound);
+        assert_eq!(status.message(), "the element with id 1 does not exists");
+    }
+    
+    #[tokio::test]
+    async fn test_database_error_into_unimplemented() {
+        let error = DatabaseError::UnimplementedError;
+        let status = Status::from(error);
+        assert_eq!(status.code(), Code::Unimplemented);
+        assert_eq!(status.message(), "unimplemented error");
+    }
+    
+    #[tokio::test]
+    async fn test_database_error_into_connection() {
+        let error = DatabaseError::ConnectionError;
+        let status = Status::from(error);
+        assert_eq!(status.code(), Code::Unavailable);
+        assert_eq!(status.message(), "connection error with database");
+    }
+    
+    #[tokio::test]
+    async fn test_database_error_into_already_exists() {
+        let error = DatabaseError::AlreadyExists{error: "error".to_string()};
+        let status = Status::from(error);
+        assert_eq!(status.code(), Code::AlreadyExists);
+        assert_eq!(status.message(), "error");
+    }
+    
+    #[tokio::test]
+    async fn test_database_error_into_unknown() {
+        let error = DatabaseError::UnknownError{error: "error".to_string()};
+        let status = Status::from(error);
+        assert_eq!(status.code(), Code::Internal);
+        assert_eq!(status.message(), "error");
+    }
+    
+    #[tokio::test]
+    async fn test_database_error_into_not_found() {
+        let error = DatabaseError::NotFoundError{id: 0};
+        let status = Status::from(error);
+        assert_eq!(status.code(), Code::NotFound);
+        assert_eq!(status.message(), "the element with id 0 does not exists");
     }
 }

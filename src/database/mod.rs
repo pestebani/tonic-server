@@ -59,3 +59,37 @@ pub trait Database {
     async fn delete_agenda(self, id: i64) -> Result<(), DatabaseError>;
 }
 
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    // test the trace_and_handle_error_database macro
+    #[tokio::test]
+    async fn test_trace_and_handle_error_database_ok() {
+        let result = trace_and_handle_error_database!({
+            Ok::<(), DatabaseError>(())
+        });
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_trace_and_handle_error_database_unknown_error() {
+        let result = trace_and_handle_error_database!({
+            Err::<(), DatabaseError>(DatabaseError::UnknownError {error: "error".into()})
+        });
+
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_trace_and_handle_error_database_known_error() {
+        let result = trace_and_handle_error_database!({
+            Err::<(), DatabaseError>(DatabaseError::UnimplementedError)
+        });
+
+        assert!(result.is_err());
+    }
+}
+

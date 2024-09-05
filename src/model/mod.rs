@@ -30,3 +30,25 @@ impl AgendaModel {
         }
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_agenda_model() {
+        let am = AgendaModel{
+            id: 1,
+            name: "name".into(),
+            email: "email".into(),
+            phone: "phone".into(),
+        };
+
+        let ap = am.clone().to_proto();
+        let am2 = AgendaModel::from_proto(ap);
+
+        assert_eq!(am, am2);
+        
+    }
+}

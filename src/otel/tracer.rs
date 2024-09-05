@@ -44,3 +44,24 @@ pub fn get_tracer_provider() -> Result<SDKTracerProvider, TraceError> {
         _ => init_sdk_tracer_provider()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tracer_provider() {
+        let result = get_tracer_provider();
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_tracer_provider_unknown() {
+        std::env::set_var("OTEL_EXPORTER_TRACES", "unknown");
+
+        let result = init_sdk_tracer_provider();
+
+        assert!(result.is_ok());
+    }
+}

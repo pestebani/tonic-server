@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:16.3-alpine3.20
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      AGENDA_DB: "agenda-tests"
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init-db-tests.sh:/docker-entrypoint-initdb.d/init-db.sh
+  otel-collector:
+    image: jaegertracing/all-in-one:1.58.1
+    ports:
+      - "4317:4317"
+      - "16686:16686"
+  loki:
+    image: grafana/loki:latest
+    ports:
+      - "3100:3100"
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"

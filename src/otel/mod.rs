@@ -21,3 +21,27 @@ pub fn init_tracer_and_logger() -> Result<(), Box<dyn Error>> {
 pub fn stop_tracer_and_logger() {
     opentelemetry::global::shutdown_tracer_provider();
 }
+
+
+#[cfg(test)]
+mod tests {
+    use tracing::{debug, error, info, span, warn, Level};
+    use super::*;
+
+    #[test]
+    fn test_tracer_and_logger() {
+        let result = init_tracer_and_logger();
+
+        assert!(result.is_ok());
+        let my_span = span!(Level::DEBUG, "my_span_debug").entered();
+
+        debug!("test_debug");
+        info!("test_info");
+        warn!("test_warn");
+        error!("test_error");
+
+        my_span.exit();
+
+        stop_tracer_and_logger();
+    }
+}
