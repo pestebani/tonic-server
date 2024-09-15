@@ -12,8 +12,8 @@ opentelemetry_sdk = { version = "*", features = ["async-std", "rt-tokio"] }
 opentelemetry-stdout = "0.5.0"
 opentelemetry-semantic-conventions = "0.16.0"
 prost = "0.13.1"
-sqlx = { version = "0.8.0", features = ["postgres", "runtime-tokio-native-tls"] }
-sqlx-postgres = "0.8.0"
+sqlx = { version = "0.8.2", features = ["postgres", "runtime-tokio-native-tls"] }
+sqlx-postgres = "0.8.2"
 tonic = { version = "0.12.1", features = [] }
 tokio = { version = "1.35.1", features = ["macros", "rt-multi-thread", "signal"] }
 tonic-build = "0.12.1"
