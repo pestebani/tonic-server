@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use tracing::instrument;
 use tonic::{Request, Response, Status, Code};
 use crate::agenda::{PingRequest, PingResponse, CreateAgendaRequest, CreateAgendaResponse, GetAgendaRequest, GetAgendaResponse, UpdateAgendaRequest, UpdateAgendaResponse, DeleteAgendaRequest, DeleteAgendaResponse, GetAgendasRequest, GetAgendasResponse};
@@ -8,16 +9,16 @@ use crate::database::Database;
 
 #[derive(Debug)]
 pub struct CustomAgendaService {
-    pub(crate) database: DBLayers,
+    pub(crate) database: Arc<DBLayers>,
 }
 
 
 impl CustomAgendaService {
     pub async fn new() -> Self {
         let database = DBLayers::new_db_handler().await.unwrap();
-        database.clone().get_db_handler().unwrap().init_database().await.unwrap();
+        database.get_db_handler().init_database().await.unwrap();
         CustomAgendaService {
-            database: DBLayers::new_db_handler().await.unwrap(),
+            database: Arc::new(DBLayers::new_db_handler().await.unwrap()),
         }
     }
 }
@@ -80,11 +81,9 @@ impl AgendaService for CustomAgendaService {
         request: Request<CreateAgendaRequest>,
     ) -> Result<Response<CreateAgendaResponse>, Status> {
         trace_and_handle_error!({
-            let new_agenda: AgendaModel = self.database
-                .clone()
+            let new_agenda: AgendaModel = Arc::clone(&self.database)
                 .get_db_handler()
-                .unwrap()
-                .create_agenda(AgendaModel::from_proto(request.into_inner().agenda.unwrap()))
+                .create_agenda(AgendaModel::from_proto(request.into_inner().agenda)?)
                 .await?;
     
             Ok::<Response<CreateAgendaResponse>, Status>(Response::new(CreateAgendaResponse {
@@ -99,10 +98,8 @@ impl AgendaService for CustomAgendaService {
         request: Request<GetAgendaRequest>,
     ) -> Result<Response<GetAgendaResponse>, Status> {
         trace_and_handle_error!({
-            let new_agenda: AgendaModel = self.database
-                .clone()
+            let new_agenda: AgendaModel = Arc::clone(&self.database)
                 .get_db_handler()
-                .unwrap()
                 .retrieve_from_id(request.into_inner().id)
                 .await?;
     
@@ -119,10 +116,8 @@ impl AgendaService for CustomAgendaService {
     ) -> Result<Response<GetAgendasResponse>, Status> {
         trace_and_handle_error!({
             let message :GetAgendasRequest = request.into_inner().clone();
-            let (agendas, page, items) = self.database
-                .clone()
+            let (agendas, page, items) = Arc::clone(&self.database)
                 .get_db_handler()
-                .unwrap()
                 .retrieve_all(message.page, message.items)
                 .await?;
 
@@ -141,11 +136,9 @@ impl AgendaService for CustomAgendaService {
     ) -> Result<Response<UpdateAgendaResponse>, Status> {
         trace_and_handle_error!({
             let message :UpdateAgendaRequest = request.into_inner().clone();
-            let new_agenda: AgendaModel = self.database
-                .clone()
+            let new_agenda: AgendaModel = Arc::clone(&self.database)
                 .get_db_handler()
-                .unwrap()
-                .update_agenda(message.id, AgendaModel::from_proto(message.agenda.unwrap()))
+                .update_agenda(message.id, AgendaModel::from_proto(message.agenda)?)
                 .await?;
             Ok::<Response<UpdateAgendaResponse>, Status>(Response::new(UpdateAgendaResponse {
                 agenda: Some(new_agenda.to_proto())
@@ -159,10 +152,8 @@ impl AgendaService for CustomAgendaService {
         request: Request<DeleteAgendaRequest>,
     ) -> Result<Response<DeleteAgendaResponse>, Status> {
         trace_and_handle_error!({
-            self.database
-                .clone()
+            Arc::clone(&self.database)
                 .get_db_handler()
-                .unwrap()
                 .delete_agenda(request.into_inner().id)
                 .await?;
             Ok::<Response<DeleteAgendaResponse>, Status>(Response::new(DeleteAgendaResponse {}))

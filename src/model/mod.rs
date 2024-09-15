@@ -1,5 +1,7 @@
-use crate::agenda::Agenda;
+mod error;
 
+use crate::agenda::Agenda;
+use crate::model::error::ModelError;
 
 #[derive(Debug,Clone, PartialEq)]
 pub struct AgendaModel {
@@ -21,12 +23,15 @@ impl AgendaModel {
         }
     }
 
-    pub fn from_proto(ap: Agenda) -> Self {
-        AgendaModel{
-            id: ap.id,
-            name: ap.name.clone(),
-            email: ap.email.clone(),
-            phone: ap.phone.clone(),
+    pub fn from_proto(oa: Option<Agenda>) -> Result<Self, ModelError> {
+        match oa {
+            Some(ap) => Ok(AgendaModel{
+                id: ap.id,
+                name: ap.name.clone(),
+                email: ap.email.clone(),
+                phone: ap.phone.clone(),
+            }),
+            None => Err(ModelError::EmptyInput),
         }
     }
 }
