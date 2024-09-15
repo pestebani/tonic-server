@@ -39,8 +39,8 @@ mod tests {
 
         assert!(result.is_ok());
         let dbl = result.unwrap();
-        assert!(dbl.postgres_db.is_some());
-        assert!(dbl.get_db_handler().is_ok());
+        
+        assert!(matches!(dbl, DBLayers::Postgres(_)));
     }
 
     #[tokio::test]
@@ -51,17 +51,6 @@ mod tests {
 
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.to_string(), "unknown database type");
-    }
-    
-    #[tokio::test]
-    async fn test_get_db_handler_unknown_type() {
-        env::set_var("DATABASE_TYPE", "invalid_type");
-
-        let dbl = DBLayers::new();
-
-        let result = dbl.get_db_handler();
-
-        assert!(result.is_err());
+        assert_eq!(err.to_string(), "unknown database type invalid_type");
     }
 }

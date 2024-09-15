@@ -51,9 +51,11 @@ mod tests {
         };
 
         let ap = am.clone().to_proto();
-        let am2 = AgendaModel::from_proto(ap);
+        let am2 = AgendaModel::from_proto(Some(ap));
 
-        assert_eq!(am, am2);
+        assert_eq!(am, am2.unwrap());
+        
+        assert_eq!(ModelError::EmptyInput, AgendaModel::from_proto(None).err().unwrap());
         
     }
 }
