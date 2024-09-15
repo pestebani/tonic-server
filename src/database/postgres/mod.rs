@@ -68,7 +68,7 @@ macro_rules! execute_query_return_agenda {
 #[async_trait]
 impl Database for PostgresDB {
     // Returns OK because we don't want to return an error when starting the server
-    async fn init_database(self) -> Result<(), Box<dyn Error>>{
+    async fn init_database(&self) -> Result<(), Box<dyn Error>>{
         let query_table_exists = "CREATE TABLE IF NOT EXISTS my_table (
 	id BIGSERIAL PRIMARY KEY,
 	name varchar NOT NULL,
@@ -82,7 +82,7 @@ impl Database for PostgresDB {
         Ok(())
     }
     #[instrument(level = "info")]
-    async fn retrieve_from_id(self, id: i64) -> Result<AgendaModel, DatabaseError> {
+    async fn retrieve_from_id(&self, id: i64) -> Result<AgendaModel, DatabaseError> {
         trace_and_handle_error_database!({
             let query = "SELECT id, name, phone, email FROM my_table WHERE id=$1";
             let select_query = sqlx::query(query)
@@ -95,7 +95,7 @@ impl Database for PostgresDB {
     }
 
     #[instrument(level = "info")]
-    async fn retrieve_all(self, page: i64, items: i64) -> Result<(Vec<AgendaModel>, i64, i64), DatabaseError> {
+    async fn retrieve_all(&self, page: i64, items: i64) -> Result<(Vec<AgendaModel>, i64, i64), DatabaseError> {
         trace_and_handle_error_database!({
             let query = "SELECT id, name, phone, email, (SELECT COUNT(*) FROM my_table) AS total_count FROM my_table ORDER BY id LIMIT $1 OFFSET $2";
             let select_query = sqlx::query(query)
@@ -129,7 +129,7 @@ impl Database for PostgresDB {
     }
 
     #[instrument(level = "info")]
-    async fn create_agenda(self, agenda: AgendaModel) -> Result<AgendaModel, DatabaseError> {
+    async fn create_agenda(&self, agenda: AgendaModel) -> Result<AgendaModel, DatabaseError> {
         trace_and_handle_error_database!({
             let query = "INSERT INTO my_table (name, phone, email) VALUES ($1, $2, $3) RETURNING id, name, phone, email";
             let insert_element_query = sqlx::query(query)
@@ -143,7 +143,7 @@ impl Database for PostgresDB {
     }
 
     #[instrument(level = "info")]
-    async fn update_agenda(self, id: i64, agenda: AgendaModel) -> Result<AgendaModel, DatabaseError> {
+    async fn update_agenda(&self, id: i64, agenda: AgendaModel) -> Result<AgendaModel, DatabaseError> {
         trace_and_handle_error_database!({
             let query = "UPDATE my_table SET name=$1, phone=$2, email=$3 WHERE id=$4 RETURNING id, name, phone, email";
             let updated_elements_query = sqlx::query(query)
@@ -159,7 +159,7 @@ impl Database for PostgresDB {
     }
 
     #[instrument(level = "info")]
-    async fn delete_agenda(self, id: i64) -> Result<(), DatabaseError> {
+    async fn delete_agenda(&self, id: i64) -> Result<(), DatabaseError> {
         trace_and_handle_error_database!({
             let query = "DELETE from my_table WHERE id = $1";
             let deleted_elements_query: PgQueryResult = sqlx::query(query)

@@ -47,15 +47,15 @@ macro_rules! trace_and_handle_error_database {
 
 #[async_trait]
 pub trait Database {
-    async fn init_database(self) -> Result<(), Box<dyn Error>>;
-    async fn retrieve_from_id(self, id: i64) -> Result<AgendaModel, DatabaseError>;
+    async fn init_database(&self) -> Result<(), Box<dyn Error>>;
+    async fn retrieve_from_id(&self, id: i64) -> Result<AgendaModel, DatabaseError>;
 
-    async fn retrieve_all(self, page: i64, items: i64) -> Result<(Vec<AgendaModel>, i64, i64), DatabaseError>;
+    async fn retrieve_all(&self, page: i64, items: i64) -> Result<(Vec<AgendaModel>, i64, i64), DatabaseError>;
 
-    async fn create_agenda(self, agenda: AgendaModel) -> Result<AgendaModel, DatabaseError>;
+    async fn create_agenda(&self, agenda: AgendaModel) -> Result<AgendaModel, DatabaseError>;
 
-    async fn update_agenda(self, id: i64, agenda: AgendaModel) -> Result<AgendaModel, DatabaseError>;
+    async fn update_agenda(&self, id: i64, agenda: AgendaModel) -> Result<AgendaModel, DatabaseError>;
 
-    async fn delete_agenda(self, id: i64) -> Result<(), DatabaseError>;
+    async fn delete_agenda(&self, id: i64) -> Result<(), DatabaseError>;
 }
 
